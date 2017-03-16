@@ -1,15 +1,3 @@
-with open("recursos.csv") as f:
-    x=[]
-    dicc = dict()
-    for linea in f:
-        x.append(linea.strip("\n").split(","))
-    for base in x[1::]:
-        dicc[int(base[0])]=base[1::]
-    #print(dicc[2])
-    dicc[2][1]=4
-    #print(dicc[2][1])
-    #print(dicc[2])
-
 class usuario:
 
     def __init__(self,id = "",nombre = "",contrasena = "",recurso_id="",**kwargs):
@@ -45,6 +33,17 @@ class Archivos:
                      self.lista_usuarios.append(usuario1)
          return self.lista_usuarios
 
+class VerificadorDatos:
+
+    def __init__(self):
+        pass
+
+    def verificar_anio(self,anio = "",**kwargs):
+        if anio%4 == 0 and anio%100 != 0 or anio%400 !=0 :
+            return "biciesto"
+        else:
+            return "normal"
+
 class SuperLuchin:
 
     def __init__(self):
@@ -73,8 +72,11 @@ class SuperLuchin:
         print("Estas dentro")
 
     def cambiar_fecha_hora(self):
-        pass
-
+        anio = input("ingrese año: ")
+        mes = input ("ingrese mes en formato numero (ej: marzo = 03): ")
+        dia = input ("ingrese dia: ")
+        hora = input ("ingrese hora (1-24): ")
+        minuto = input ("ingrese minuto (00-59): ")
 
 ejecutar = SuperLuchin()
 ejecutar.iniciar_sesion()
