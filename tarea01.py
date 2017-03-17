@@ -201,7 +201,7 @@ class SuperLuchin:
         self.lista_usuarios = []
         self.usuario_activo = []
         self.lista_recursos = []
-        self.recurso_activo = ""
+        self.recurso_activo = []
         self.fecha_actual = ""
         self.hora_actual = ""
         self.archivos = Archivos()
@@ -232,7 +232,7 @@ class SuperLuchin:
         for recursos in self.lista_recursos:
             if self.usuario_activo.recurso_id == recursos.id:
                 mensaje1 = "miembro de {0}--".format(recursos.tipo)
-                self.recurso_activo = recursos.tipo
+                self.recurso_activo = recursos
                 break
             else:
                 mensaje1 = "miembro de la ANAF--"
@@ -254,6 +254,7 @@ class SuperLuchin:
         self.lista_recursos = []
         self.lista_usuarios = []
         self.usuario_activo = []
+        self.recurso_activo = []
         self.fecha_actual = ""
         self.hora_actual = ""
         self.archivos = Archivos()
@@ -265,4 +266,3 @@ class SuperLuchin:
         self.iniciar_sesion()
 
 ejecutar = SuperLuchin()
-ejecutar.archivos.cargar_recursos()
