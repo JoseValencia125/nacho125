@@ -28,6 +28,7 @@ class Incendio:
         self.id = id
         self.lat = lat
         self.lon = lon
+        self.radio = float(0)
         self.potencia = int(potencia)
         # self.puntos_poder_total = superficie_afectada * potencia
         self.superficie_afectada = int(0)
@@ -289,7 +290,46 @@ class FechaYHora:
             except ValueError:
                 print("Hora no valida")
 
-
+    # Funcion para ver si fecha1 es despues de fecha2
+    def comparar_fecha(self,fecha1,fecha2):
+        fecha_1 = fecha1.split(" ")[0]
+        hora_1 = fecha1.split(" ")[1]
+        anio_1 = int(fecha_1.split("-")[0])
+        mes_1 = int(fecha_1.split("-")[1])
+        dia_1 = int(fecha_1.split("-")[2])
+        minuto_1 = int(hora_1.split(":")[1])
+        horaa_1 = int(hora_1.split(":")[0])
+        fecha_2 = fecha2.split(" ")[0]
+        hora_2 = fecha2.split(" ")[1]
+        anio_2 = int(fecha_2.split("-")[0])
+        mes_2 = int(fecha_2.split("-")[1])
+        dia_2 = int(fecha_2.split("-")[2])
+        minuto_2 = int(hora_2.split(":")[1])
+        horaa_2 = int(hora_2.split(":")[0])
+        if anio_1 > anio_2:
+            return True
+        elif anio_1 == anio_2:
+            if mes_1 > mes_2:
+                return True
+            elif mes_1 == mes_2:
+                if dia_1 > dia_2:
+                    return True
+                elif dia_1 == dia_2:
+                    if horaa_1>horaa_2:
+                        return True
+                    elif horaa_1 == horaa_2:
+                        if minuto_1 >= minuto_2:
+                            return True
+                        else:
+                            return False
+                    else:
+                        return False
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
 class SuperLuchin:
     def __init__(self):
         self.lista_usuarios = []
@@ -352,10 +392,10 @@ class SuperLuchin:
             self.mes = int(self.mes)
             self.dia = int(self.dia)
             hora = incendio.fecha_inicio.split(" ")[1]
-            fecha = incendio.fecha_inicio.split(" ")[0]
             hora = hora.split(":")
             minuto = int(hora[1])
             hora = int(hora[0])
+            fecha = incendio.fecha_inicio.split(" ")[0]
             fecha = fecha.split("-")
             dia = int(fecha[2])
             mes = int(fecha[1])
@@ -377,6 +417,17 @@ class SuperLuchin:
                         elif hora == hora:
                             if minuto > minuto_actual:
                                 incendios_inactivos.append(incendio)
+            if not incendio in incendios_inactivos:
+                print("hola")
+                minuto += 1
+                incendio.radio +=(0.5/60)
+                for condiciones in self.lista_metereologia:
+                    x = (float(condiciones.lat)-float(incendio.lat))**2
+                    y = (float(condiciones.lon)-float(incendio.lon))**2
+                    distancia_grado = math.sqrt(x+y)
+                    distancia_km = distancia_grado*110
+                    if distancia_km <= (float(condiciones.radio)/1000 + float(incendio.radio)):
+                        print("afecta")
         for incendio in incendios_inactivos:
             self.lista_incendios.remove(incendio)
 
@@ -424,7 +475,6 @@ class SuperLuchin:
 
     def ver_incendios(self):
         self.incendios_activos()
-        print(self.lista_incendios)
         if len(self.lista_incendios) == 0:
             print("No hay incendios activos")
         else:
@@ -452,4 +502,6 @@ def escribir(x):
     archivo.close()
 
 
-ejecutar = SuperLuchin()
+#ejecutar = SuperLuchin()
+p = FechaYHora()
+print(p.comparar_fecha("2018-03-28 20:02:00","2018-03-28 06:30:00"))
