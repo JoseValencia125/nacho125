@@ -23,7 +23,9 @@ class Recurso:
         self.delay = delay
         self.tasa_extincion = tasa_extincion
         self.costo = costo
-
+        self.ubicacion = ""
+        self.horas_trabajadas = int(0)
+        self.estado = ""
 
 class Incendio:
     def __init__(self, id="", lat="", lon="", potencia="", fecha_inicio=""):
@@ -76,10 +78,10 @@ class Meteorologia:
 
 class Archivos:
     def __init__(self):
-        self.primera_linea_usuarios=""
-        self.primera_linea_incendios=""
-        self.primera_linea_recursos=""
-        self.primera_linea_metereologia=""
+        self.primera_linea_usuarios = ""
+        self.primera_linea_incendios = ""
+        self.primera_linea_recursos = ""
+        self.primera_linea_metereologia = ""
 
     def cargar_usuarios(self):
         self.lista_usuarios = []
@@ -128,7 +130,7 @@ class Archivos:
                     tasa_extincion = linea.strip("\n").split(",")[llaves_columnas.index("tasa_extincion")]
                     costo = linea.strip("\n").split(",")[llaves_columnas.index("costo")]
                     recurso1 = Recurso(id=id_recurso, tipo=tipo, lat=lat, lon=lon, autonomia=autonomia, delay=delay,
-                                       tasa_extincion=tasa_extincion, costo=costo)
+                                       tasa_extincion=tasa_extincion, costo=costo, velocidad=velocidad)
                     self.lista_recursos.append(recurso1)
         return self.lista_recursos
 
@@ -182,24 +184,24 @@ class Archivos:
                     self.lista_meteorologia.append(meteorologia1)
         return self.lista_meteorologia
 
-    def sobreescribir_usuarios(self,lista):
+    def sobreescribir_usuarios(self, lista):
         archivo = open("usuarios.csv", "w")
         orden = self.primera_linea_usuarios.strip("\n").split(",")
         texto = ""
         for elemento in orden:
-            if (elemento.split(":")[0])=="id":
-                texto +=str(elemento)+","
+            if (elemento.split(":")[0]) == "id":
+                texto += str(elemento) + ","
         for elemento in orden:
-            if (elemento.split(":")[0])=="nombre":
-                texto +=str(elemento)+","
+            if (elemento.split(":")[0]) == "nombre":
+                texto += str(elemento) + ","
         for elemento in orden:
-            if (elemento.split(":")[0])=="contraseña":
-                texto +=str(elemento)+","
+            if (elemento.split(":")[0]) == "contraseña":
+                texto += str(elemento) + ","
         for elemento in orden:
-            if (elemento.split(":")[0])=="recurso_id":
-                texto +=str(elemento)+"\n"
+            if (elemento.split(":")[0]) == "recurso_id":
+                texto += str(elemento) + "\n"
         archivo.write(texto)
-        fila=""
+        fila = ""
         for elemento in lista:
             fila += str(elemento.id) + ","
             fila += str(elemento.nombre) + ","
@@ -209,7 +211,7 @@ class Archivos:
             fila = ""
         archivo.close()
 
-    def sobreescribir_incendios(self,lista):
+    def sobreescribir_incendios(self, lista):
         archivo = open("incendios.csv", "w")
         orden = self.primera_linea_incendios.strip("\n").split(",")
         texto = ""
@@ -239,6 +241,97 @@ class Archivos:
             archivo.write(fila)
             fila = ""
         archivo.close()
+
+    def sobreescribir_recursos(self, lista):
+        archivo = open("recursos.csv", "w")
+        orden = self.primera_linea_recursos.strip("\n").split(",")
+        texto = ""
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "id":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "tipo":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "velocidad":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lat":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lon":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "autonomia":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "delay":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "tasa_extincion":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "costo":
+                texto += str(elemento) + "\n"
+        archivo.write(texto)
+        fila = ""
+        for elemento in lista:
+            fila += str(elemento.id) + ","
+            fila += str(elemento.tipo) + ","
+            fila += str(elemento.velocidad) + ","
+            fila += str(elemento.lat) + ","
+            fila += str(elemento.lon) + ","
+            fila += str(elemento.autonomia) + ","
+            fila += str(elemento.delay) + ","
+            fila += str(elemento.tasa_extincion) + ","
+            fila += str(elemento.costo) + "\n"
+            archivo.write(fila)
+            fila = ""
+        archivo.close()
+
+    def sobreescribir_meteorologia(self, lista):
+        archivo = open("meteorologia.csv", "w")
+        orden = self.primera_linea_metereologia.strip("\n").split(",")
+        texto = ""
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "id":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "fecha_inicio":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "fecha_termino":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "tipo":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "valor":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lat":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lon":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "radio":
+                texto += str(elemento) + "\n"
+        archivo.write(texto)
+        fila = ""
+        for elemento in lista:
+            fila += str(elemento.id) + ","
+            fila += str(elemento.fecha_inicio) + ","
+            fila += str(elemento.fecha_termino) + ","
+            fila += str(elemento.tipo) + ","
+            fila += str(elemento.valor) + ","
+            fila += str(elemento.lat) + ","
+            fila += str(elemento.lon) + ","
+            fila += str(elemento.radio) + "\n"
+            archivo.write(fila)
+            fila = ""
+        archivo.close()
+
 
 class FechaYHora:
     def __init__(self):
@@ -591,20 +684,26 @@ class SuperLuchin:
                 try:
                     val = int(opcion)
                     opcion = int(opcion)
-                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
+                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10]:
                         if opcion == 0:
                             self.cerrar_sesion()
                             contador = False
                         elif opcion == 1:
                             self.ver_incendios()
+                        elif opcion ==3:
+                            self.ver_usuarios()
                         elif opcion == 4:
                             self.agregar_usuario()
+                        elif opcion == 5:
+                            self.agregar_pronostico_meteorologico()
                         elif opcion == 6:
                             self.agregar_incendio()
                         elif opcion == 8:
                             self.cambiar_fecha_hora()
                             contador = False
                             self.menu()
+                        elif opcion == 10:
+                            self.delegar_recurso()
                     else:
                         print("Opcion no valida")
                 except ValueError:
@@ -612,23 +711,151 @@ class SuperLuchin:
         else:
             print("no Anaf")
 
+    def agregar_pronostico_meteorologico(self):
+        verificador1 = True
+        verificador2 = True
+        verificador3 = True
+        verificador4 = True
+        verificador5 = True
+        verificador6 = True
+        verificador7 = True
+        while verificador1:
+            lat = input("Ingrese latitud: ")
+            try:
+                val = float(lat)
+                verificador1 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador2:
+            lon = input("Ingrese Longitud: ")
+            try:
+                val = float(lon)
+                verificador2 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador3:
+            valor = input("Ingrese valor: ")
+            try:
+                val = float(valor)
+                verificador3 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador4:
+            radio = input("Ingrese radio: ")
+            try:
+                val = int(radio)
+                verificador4 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador5:
+            tipo = input("Ingrese tipo: ")
+            if tipo in ["VIENTO", "NUBES", "LLUVIA", "TEMPERATURA"]:
+                verificador5 = False
+            else:
+                print("dato incorrecto")
+        while verificador6:
+            print("Fecha inicio:")
+            anio = self.fecha.ver_anio()
+            mes = self.fecha.ver_mes()
+            dia = self.fecha.ver_dia()
+            fecha_inicio = ("{2}-{1}-{0}".format(dia, mes, anio))
+            hora_inicio = self.fecha.ver_hora()
+            fecha_inicio = fecha_inicio + " " + hora_inicio
+            print("Fecha termino:")
+            anio = self.fecha.ver_anio()
+            mes = self.fecha.ver_mes()
+            dia = self.fecha.ver_dia()
+            fecha_termino = ("{2}-{1}-{0}".format(dia, mes, anio))
+            hora_termino = self.fecha.ver_hora()
+            fecha_termino = fecha_termino + " " + hora_termino
+            if FechaYHora.comparar_fecha(fecha_termino, fecha_inicio):
+                verificador6 = False
+            else:
+                print("Fecha incorrecta, fecha termino debe ser posterior a la de inicio")
+        id = len(self.lista_metereologia)
+        meteorologia1 = Meteorologia(id=id, lat=lat, lon=lon, radio=radio, fecha_inicio=fecha_inicio,
+                                     fecha_termino=fecha_termino, tipo=tipo, valor=valor)
+        self.lista_metereologia.append(meteorologia1)
+        print("Pronostico meteorologico agregado correctamente\n")
+        self.archivos.sobreescribir_meteorologia(self.lista_metereologia)
+
     def agregar_usuario(self):
         nombre = input("Ingrese nombre: ")
         contrasena = input("Ingrese contrasena: ")
         verificador = True
         while verificador:
-            recurso_id = input("Ingrese ID del recurso(deje en blanco si es ANAF): ")
-            for recurso in self.lista_recursos:
-                if recurso_id == recurso.id:
-                    verificador = False
-                elif recurso_id == "":
-                    verificador = False
-            if verificador:
-                print("Recurso no valido")
+            tipo = input("Ingrese nombre del recurso en mayusculas(deje en blanco si es ANAF): ")
+            if tipo in ["BOMBERO", "AVION", "HELICOPTERO", "BRIGADA", ""]:
+                if tipo == "":
+                    recurso_id = ""
+                else:
+                    verificador1 = True
+                    verificador2 = True
+                    verificador3 = True
+                    verificador4 = True
+                    verificador5 = True
+                    verificador6 = True
+                    verificador7 = True
+                    while verificador1:
+                        lat = input("Ingrese latitud: ")
+                        try:
+                            val = float(lat)
+                            verificador1 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador2:
+                        lon = input("Ingrese Longitud: ")
+                        try:
+                            val = float(lon)
+                            verificador2 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador3:
+                        velocidad = input("Ingrese velocidad: ")
+                        try:
+                            val = int(velocidad)
+                            verificador3 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador4:
+                        autonomia = input("Ingrese autonomia: ")
+                        try:
+                            val = float(autonomia)
+                            verificador4 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador5:
+                        tasa_extincion = input("Ingrese tasa_extincion: ")
+                        try:
+                            val = int(tasa_extincion)
+                            verificador5 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador6:
+                        delay = input("Ingrese delay: ")
+                        try:
+                            val = int(delay)
+                            verificador6 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    while verificador7:
+                        costo = input("Ingrese costo: ")
+                        try:
+                            val = int(costo)
+                            verificador7 = False
+                        except ValueError:
+                            print("dato incorrecto")
+                    id = len(self.lista_recursos)
+                    recurso_id = id
+                    recurso = Recurso(id=id, tipo=tipo, lat=lat, lon=lon, autonomia=autonomia, delay=delay,
+                                      tasa_extincion=tasa_extincion, costo=costo, velocidad=velocidad)
+                    self.lista_recursos.append(recurso)
+                verificador = False
         id = len(self.lista_usuarios)
         usuario = Usuario(id=id, nombre=nombre, contrasena=contrasena, recurso_id=recurso_id)
         self.lista_usuarios.append(usuario)
         self.archivos.sobreescribir_usuarios(self.lista_usuarios)
+        self.archivos.sobreescribir_recursos(self.lista_recursos)
         print("Usuario agregado correctamente\n")
 
     def agregar_incendio(self):
@@ -639,14 +866,14 @@ class SuperLuchin:
         while verificador1:
             lat = input("Ingrese latitud: ")
             try:
-                val = int(lat)
+                val = float(lat)
                 verificador1 = False
             except ValueError:
                 print("dato incorrecto")
         while verificador2:
             lon = input("Ingrese Longitud: ")
             try:
-                val = int(lon)
+                val = float(lon)
                 verificador2 = False
             except ValueError:
                 print("dato incorrecto")
@@ -674,6 +901,7 @@ class SuperLuchin:
         self.lista_incendios_ocurridos.append(incendio)
         print("Incendio agregado correctamente\n")
         self.archivos.sobreescribir_incendios(self.lista_incendios)
+
     def cerrar_sesion(self):
         self.lista_recursos = []
         self.lista_usuarios = []
@@ -688,6 +916,11 @@ class SuperLuchin:
         self.dia = 0
         print("---- Bienvenido al Software SuperLuchin -----")
         self.iniciar_sesion()
+
+    def ver_usuarios(self):
+        for usuario in self.lista_usuarios:
+            print("id: {0},Nombre: {1},Clave: {2},Id del recurso: {3}".format(usuario.id, usuario.nombre,
+                                                                              usuario.contrasena, usuario.recurso_id))
 
     def ver_incendios(self):
         self.incendios_activos()
@@ -704,18 +937,9 @@ class SuperLuchin:
                         incendios.porcentaje_de_extincion, incendios.puntos_poder))
                 print("---------------------------------------------------------------")
 
+    def asignar_recurso(self):
+        pass
 
-def escribir(x):
-    archivo = open("hola.csv", "w")
-    h = ""
-    for i in x:
-        h += i.id + ","
-        h += i.nombre + ","
-        h += i.contrasena + ","
-        h += i.recurso_id + "\n"
-        archivo.write(h)
-        h = ""
-    archivo.close()
 
 
 ejecutar = SuperLuchin()
