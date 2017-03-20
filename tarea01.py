@@ -25,7 +25,8 @@ class Recurso:
         self.costo = costo
         self.ubicacion = ""
         self.horas_trabajadas = int(0)
-        self.estado = ""
+        self.estado = "standby"
+
 
 class Incendio:
     def __init__(self, id="", lat="", lon="", potencia="", fecha_inicio=""):
@@ -183,6 +184,13 @@ class Archivos:
                                                  fecha_termino=fecha_termino, tipo=tipo, valor=valor)
                     self.lista_meteorologia.append(meteorologia1)
         return self.lista_meteorologia
+
+    def cargar_cambios(self):
+        try:
+            with open("cambios.csv")as archivo__cambios:
+                contador = 0
+        except FileNotFoundError:
+            return False
 
     def sobreescribir_usuarios(self, lista):
         archivo = open("usuarios.csv", "w")
@@ -416,9 +424,6 @@ class FechaYHora:
                             return self.dia
                         else:
                             print("Dia no valido, debe estar entre 1:28")
-
-
-
             except ValueError:
                 print("Dia no valido")
 
@@ -588,7 +593,7 @@ class SuperLuchin:
                     break
                 else:
                     identificador = False
-            if identificador == False:
+            if identificador is False:
                 print("clave o usuario incorrecto")
         mensaje = "-- Bienvenido {0} ".format(self.usuario_activo.nombre)
         for recursos in self.lista_recursos:
@@ -614,7 +619,6 @@ class SuperLuchin:
     def incendios_activos(self):
         incendios_inactivos = []
         for incendio in self.lista_incendios:
-            radio = 0
             self.anio = int(self.anio)
             self.mes = int(self.mes)
             self.dia = int(self.dia)
@@ -679,18 +683,18 @@ class SuperLuchin:
             while contador:
                 print("Opciones:\n0 : Cerrar sesion\n1 : Ver datos incendios\n2 : Ver datos recursos\n"
                       "3 : Ver datos usuarios\n4 : Agregar usuario\n"
-                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas\n8 :Cambiar Fecha y Hora\n9 :Salir ")
+                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas\n8 :Cambiar Fecha y Hora\n9 :Asignar recuros\n10: Salir ")
                 opcion = input("Ingrese alguna opcion: ")
                 try:
                     val = int(opcion)
                     opcion = int(opcion)
-                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10]:
+                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
                         if opcion == 0:
                             self.cerrar_sesion()
                             contador = False
                         elif opcion == 1:
                             self.ver_incendios()
-                        elif opcion ==3:
+                        elif opcion == 3:
                             self.ver_usuarios()
                         elif opcion == 4:
                             self.agregar_usuario()
@@ -702,8 +706,8 @@ class SuperLuchin:
                             self.cambiar_fecha_hora()
                             contador = False
                             self.menu()
-                        elif opcion == 10:
-                            self.delegar_recurso()
+                        elif opcion == 9:
+                            self.asignar_recurso()
                     else:
                         print("Opcion no valida")
                 except ValueError:
@@ -925,7 +929,7 @@ class SuperLuchin:
     def ver_incendios(self):
         self.incendios_activos()
         if len(self.lista_incendios_ocurridos) == 0:
-            print("No hay incendios activos")
+            print("\nNo hay incendios activos\n")
         else:
             for incendios in self.lista_incendios_ocurridos:
                 print(incendios)
@@ -938,8 +942,26 @@ class SuperLuchin:
                 print("---------------------------------------------------------------")
 
     def asignar_recurso(self):
-        pass
-
-
+        validador = True
+        while validador:
+            id_recurso = input("Ingrese id del recurso: ")
+            for recurso in self.lista_recursos:
+                if id_recurso == recurso.id and recurso.estado == "standby":
+                    validador = False
+                    recurso.estado ="en ruta a incendio"
+                    break
+            if validador:
+                print("Error en id")
+        validador = True
+        while validador:
+            id_incendio = input("Ingrese id del incendio: ")
+            for incendio in self.lista_incendios:
+                if id_incendio == incendio.id:
+                    incendio.recursos_usados.append(recurso)
+                    validador = False
+                    break
+            if validador:
+                print("id erroneo")
+        print("\nRecurso asignado correctamente\n")
 
 ejecutar = SuperLuchin()
