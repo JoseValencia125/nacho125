@@ -1,6 +1,8 @@
 import math
 
 
+# lluvia se considera el total que cayo
+
 class Usuario:
     def __init__(self, id="", nombre="", contrasena="", recurso_id=""):
         self.id = id
@@ -30,12 +32,11 @@ class Incendio:
         self.lon = lon
         self.radio = float(0)
         self.potencia = int(potencia)
-        # self.puntos_poder_total = superficie_afectada * potencia
-        self.superficie_afectada = int(0)
-        self.puntos_poder = (self.superficie_afectada * self.potencia)
         self.puntos_poder_extintos = 0
         self.fecha_inicio = fecha_inicio
         self.recursos_usados = []
+        self.ultima_condicion = ""
+
     @property
     def activo(self):
         if self.potencia > 0:
@@ -50,6 +51,10 @@ class Incendio:
 
         else:
             return "100%"
+
+    @property
+    def puntos_poder(self):
+        return (math.pi * (self.radio ** 2)) * self.potencia
 
     def __str__(self):
         cadena = "id: {}, lat: {}, lon : {}, potencia : {}, fecha inicio: {}".format(self.id, self.lat, self.lon,
@@ -188,10 +193,9 @@ class FechaYHora:
             try:
                 val = int(anio)
                 anio = int(anio)
-                if anio % 4 == 0 and (anio % 100 != 0 or anio % 400 != 0):
+                if self.es_biciesto(anio):
                     self.anio = anio
                     self.bisiesto = True
-                    print(self.anio)
                     self.contador = False
                     return self.anio
                 else:
@@ -291,7 +295,7 @@ class FechaYHora:
                 print("Hora no valida")
 
     # Funcion para ver si fecha1 es despues de fecha2
-    def comparar_fecha(self,fecha1,fecha2):
+    def comparar_fecha(fecha1, fecha2):
         fecha_1 = fecha1.split(" ")[0]
         hora_1 = fecha1.split(" ")[1]
         anio_1 = int(fecha_1.split("-")[0])
@@ -315,7 +319,7 @@ class FechaYHora:
                 if dia_1 > dia_2:
                     return True
                 elif dia_1 == dia_2:
-                    if horaa_1>horaa_2:
+                    if horaa_1 > horaa_2:
                         return True
                     elif horaa_1 == horaa_2:
                         if minuto_1 >= minuto_2:
@@ -330,6 +334,70 @@ class FechaYHora:
                 return False
         else:
             return False
+
+    def es_biciesto(self, anio=0, **kwargs):
+        if anio % 4 == 0:
+            if str(anio)[-1] == "0" and str(anio)[-2] == "0":
+                if anio % 400 == 0:
+                    return True
+                else:
+                    return False
+            else:
+                return True
+        else:
+            return False
+
+    def siguiente_minuto(fecha_ingresada):
+        hora = fecha_ingresada.split(" ")[1]
+        hora = hora.split(":")
+        minuto = int(hora[1])
+        hora = int(hora[0])
+        fecha = fecha_ingresada.split(" ")[0]
+        fecha = fecha.split("-")
+        dia = int(fecha[2])
+        mes = int(fecha[1])
+        anio = int(fecha[0])
+        a = anio
+        if minuto < 59:
+            minuto += 1
+        else:
+            minuto = 0
+            if hora < 23:
+                hora += 1
+            else:
+                hora = 0
+                if mes in [1, 3, 5, 7, 8, 10, 12]:
+                    if dia < 31:
+                        dia += 1
+                    else:
+                        dia = 0
+                        if mes < 12:
+                            mes += 1
+                        else:
+                            anio += 1
+                elif mes in [4, 6, 9, 11]:
+                    if dia < 30:
+                        dia += 1
+                    else:
+                        dia = 0
+                        mes += 1
+                elif mes in [2]:
+                    if FechaYHora.es_biciesto(self="", anio=anio):
+                        if dia < 29:
+                            dia += 1
+                        else:
+                            dia = 0
+                            mes += 1
+                    else:
+                        if dia < 28:
+                            dia += 1
+                        else:
+                            dia = 0
+                            mes += 1
+        siguiente_fecha = "{0}-{1}-{2} {3}:{4}:00".format(anio, mes, dia, hora, minuto)
+        return siguiente_fecha
+
+
 class SuperLuchin:
     def __init__(self):
         self.lista_usuarios = []
@@ -345,6 +413,7 @@ class SuperLuchin:
         self.anio = 0
         self.mes = 0
         self.dia = 0
+        self.fecha_y_hora_actual = ""
         print("---- Bienvenido al Software SuperLuchin -----")
         self.iniciar_sesion()
 
@@ -374,6 +443,7 @@ class SuperLuchin:
                 mensaje1 = "miembro de la ANAF--"
         print(mensaje + mensaje1)
         self.cambiar_fecha_hora()
+        print(self.fecha_y_hora_actual)
         self.menu()
 
     def cambiar_fecha_hora(self):
@@ -382,12 +452,12 @@ class SuperLuchin:
         self.dia = self.fecha.ver_dia()
         self.fecha_actual = ("{2}-{1}-{0}".format(self.dia, self.mes, self.anio))
         self.hora_actual = self.fecha.ver_hora()
+        self.fecha_y_hora_actual = self.fecha_actual + " " + self.hora_actual
 
     def incendios_activos(self):
         incendios_inactivos = []
         for incendio in self.lista_incendios:
             radio = 0
-            area = math.pi * (radio ** 2)
             self.anio = int(self.anio)
             self.mes = int(self.mes)
             self.dia = int(self.dia)
@@ -418,16 +488,28 @@ class SuperLuchin:
                             if minuto > minuto_actual:
                                 incendios_inactivos.append(incendio)
             if not incendio in incendios_inactivos:
-                print("hola")
-                minuto += 1
-                incendio.radio +=(0.5/60)
-                for condiciones in self.lista_metereologia:
-                    x = (float(condiciones.lat)-float(incendio.lat))**2
-                    y = (float(condiciones.lon)-float(incendio.lon))**2
-                    distancia_grado = math.sqrt(x+y)
-                    distancia_km = distancia_grado*110
-                    if distancia_km <= (float(condiciones.radio)/1000 + float(incendio.radio)):
-                        print("afecta")
+                fecha_simulacion = "{0}-{1}-{2} {3}:{4}:00".format(anio, mes, dia, hora, minuto)
+                while FechaYHora.comparar_fecha(self.fecha_y_hora_actual, fecha_simulacion):
+                    incendio.radio += (0.5 / 60)
+                    for condiciones in self.lista_metereologia:
+                        x = (float(condiciones.lat) - float(incendio.lat)) ** 2
+                        y = (float(condiciones.lon) - float(incendio.lon)) ** 2
+                        distancia_grado = math.sqrt(x + y)
+                        distancia_km = distancia_grado * 110
+                        if distancia_km <= (float(condiciones.radio) / 1000 + float(incendio.radio)):
+                            if FechaYHora.comparar_fecha(fecha_simulacion,
+                                                         condiciones.fecha_inicio) and FechaYHora.comparar_fecha(
+                                condiciones.fecha_termino, fecha_simulacion):
+                                tasa_por_minuto = 0
+                                if condiciones.tipo == "VIENTO":
+                                    tasa_por_minuto = (((float(condiciones.valor)) / 1000) * 60) / 100
+                                elif condiciones.tipo == "TEMPERATURA":
+                                    if float(condiciones.valor) > 30:
+                                        tasa_por_minuto = ((float(condiciones.valor) - 30) * 25) / 60
+                                elif condiciones.tipo == "LLUVIA":
+                                    tasa_por_minuto = (float(condiciones.valor) * -50) / 60
+                                incendio.radio += tasa_por_minuto
+                    fecha_simulacion = (FechaYHora.siguiente_minuto(fecha_simulacion))
         for incendio in incendios_inactivos:
             self.lista_incendios.remove(incendio)
 
@@ -439,24 +521,47 @@ class SuperLuchin:
             while contador:
                 print("Opciones:\n0 : Cerrar sesion\n1 : Ver datos incendios\n2 : Ver datos recursos\n"
                       "3 : Ver datos usuarios\n4 : Agregar usuario\n"
-                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas ")
+                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas\n8 :Cambiar Fecha y Hora\n9 :Salir ")
                 opcion = input("Ingrese alguna opcion: ")
                 try:
                     val = int(opcion)
                     opcion = int(opcion)
-                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7]:
+                    if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
                         if opcion == 0:
                             self.cerrar_sesion()
                             contador = False
                         elif opcion == 1:
                             self.ver_incendios()
+                        elif opcion == 4:
+                            self.agregar_usuario()
+                        elif opcion == 8:
+                            self.cambiar_fecha_hora()
                             contador = False
+                            self.menu()
                     else:
                         print("Opcion no valida")
                 except ValueError:
                     print("Opcion no valida")
         else:
             print("no Anaf")
+
+    def agregar_usuario(self):
+        nombre = input("Ingrese nombre: ")
+        contrasena = input("Ingrese contrasena: ")
+        verificador = True
+        while verificador:
+            recurso_id = input("Ingrese ID del recurso(deje en blanco si es ANAF): ")
+            for recurso in self.lista_recursos:
+                if recurso_id == recurso.id:
+                    verificador = False
+                elif recurso_id == "":
+                    verificador = False
+            if verificador:
+                print("Recurso no valido")
+        id =len(self.lista_usuarios)-1
+        usuario = Usuario(id=id,nombre=nombre,contrasena=contrasena,recurso_id=recurso_id)
+        self.lista_usuarios.append(usuario)
+
 
     def cerrar_sesion(self):
         self.lista_recursos = []
@@ -480,12 +585,12 @@ class SuperLuchin:
         else:
             for incendios in self.lista_incendios:
                 print(incendios)
-                print(incendios.porcentaje_de_extincion)
-                print("El Incendio {0} esta {1}, porcentaje de extincion: {3}, recursos asigandos: {2}".format(
-                    incendios.id,
-                    incendios.activo,
-                    incendios.recursos_usados,
-                    incendios.porcentaje_de_extincion))
+                print(
+                    "El Incendio {0} esta {1}, porcentaje de extincion: {3}, recursos asigandos: {2}, puntos de poder: {4}".format(
+                        incendios.id,
+                        incendios.activo,
+                        incendios.recursos_usados,
+                        incendios.porcentaje_de_extincion, incendios.puntos_poder))
                 print("---------------------------------------------------------------")
 
 
@@ -502,6 +607,4 @@ def escribir(x):
     archivo.close()
 
 
-#ejecutar = SuperLuchin()
-p = FechaYHora()
-print(p.comparar_fecha("2018-03-28 20:02:00","2018-03-28 06:30:00"))
+ejecutar = SuperLuchin()
