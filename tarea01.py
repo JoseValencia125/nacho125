@@ -76,7 +76,10 @@ class Meteorologia:
 
 class Archivos:
     def __init__(self):
-        pass
+        self.primera_linea_usuarios=""
+        self.primera_linea_incendios=""
+        self.primera_linea_recursos=""
+        self.primera_linea_metereologia=""
 
     def cargar_usuarios(self):
         self.lista_usuarios = []
@@ -86,6 +89,7 @@ class Archivos:
             contador = 0
             for linea in archivo_usuarios:
                 if contador < 1:
+                    self.primera_linea_usuarios = linea
                     primera_linea = (linea.strip("\n").split(","))
                     contador += 1
                     for columna in primera_linea:
@@ -108,6 +112,7 @@ class Archivos:
             contador = 0
             for linea in archivo_recursos:
                 if contador < 1:
+                    self.primera_linea_recursos = linea
                     primera_linea = (linea.strip("\n").split(","))
                     contador += 1
                     for columna in primera_linea:
@@ -135,6 +140,7 @@ class Archivos:
             contador = 0
             for linea in archivo_incendios:
                 if contador < 1:
+                    self.primera_linea_incendios = linea
                     primera_linea = (linea.strip("\n").split(","))
                     contador += 1
                     for columna in primera_linea:
@@ -157,6 +163,7 @@ class Archivos:
             contador = 0
             for linea in archivo_meteorologias:
                 if contador < 1:
+                    self.primera_linea_metereologia = linea
                     primera_linea = (linea.strip("\n").split(","))
                     contador += 1
                     for columna in primera_linea:
@@ -175,6 +182,63 @@ class Archivos:
                     self.lista_meteorologia.append(meteorologia1)
         return self.lista_meteorologia
 
+    def sobreescribir_usuarios(self,lista):
+        archivo = open("usuarios.csv", "w")
+        orden = self.primera_linea_usuarios.strip("\n").split(",")
+        texto = ""
+        for elemento in orden:
+            if (elemento.split(":")[0])=="id":
+                texto +=str(elemento)+","
+        for elemento in orden:
+            if (elemento.split(":")[0])=="nombre":
+                texto +=str(elemento)+","
+        for elemento in orden:
+            if (elemento.split(":")[0])=="contraseña":
+                texto +=str(elemento)+","
+        for elemento in orden:
+            if (elemento.split(":")[0])=="recurso_id":
+                texto +=str(elemento)+"\n"
+        archivo.write(texto)
+        fila=""
+        for elemento in lista:
+            fila += str(elemento.id) + ","
+            fila += str(elemento.nombre) + ","
+            fila += str(elemento.contrasena) + ","
+            fila += str(elemento.recurso_id) + "\n"
+            archivo.write(fila)
+            fila = ""
+        archivo.close()
+
+    def sobreescribir_incendios(self,lista):
+        archivo = open("incendios.csv", "w")
+        orden = self.primera_linea_incendios.strip("\n").split(",")
+        texto = ""
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "id":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lat":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "lon":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "potencia":
+                texto += str(elemento) + ","
+        for elemento in orden:
+            if (elemento.split(":")[0]) == "fecha_inicio":
+                texto += str(elemento) + "\n"
+        archivo.write(texto)
+        fila = ""
+        for elemento in lista:
+            fila += str(elemento.id) + ","
+            fila += str(elemento.lat) + ","
+            fila += str(elemento.lon) + ","
+            fila += str(elemento.potencia) + ","
+            fila += str(elemento.fecha_inicio) + "\n"
+            archivo.write(fila)
+            fila = ""
+        archivo.close()
 
 class FechaYHora:
     def __init__(self):
@@ -357,7 +421,6 @@ class FechaYHora:
         dia = int(fecha[2])
         mes = int(fecha[1])
         anio = int(fecha[0])
-        a = anio
         if minuto < 59:
             minuto += 1
         else:
@@ -405,6 +468,7 @@ class SuperLuchin:
         self.lista_recursos = []
         self.recurso_activo = []
         self.lista_incendios = []
+        self.lista_incendios_ocurridos = []
         self.lista_metereologia = []
         self.fecha_actual = ""
         self.hora_actual = ""
@@ -511,11 +575,12 @@ class SuperLuchin:
                                 incendio.radio += tasa_por_minuto
                     fecha_simulacion = (FechaYHora.siguiente_minuto(fecha_simulacion))
         for incendio in incendios_inactivos:
-            self.lista_incendios.remove(incendio)
+            self.lista_incendios_ocurridos.remove(incendio)
 
     def menu(self):
         self.lista_metereologia = self.archivos.cargar_meteorologia()
         self.lista_incendios = self.archivos.cargar_incendios()
+        self.lista_incendios_ocurridos = self.archivos.cargar_incendios()
         if self.recurso_activo == []:
             contador = True
             while contador:
@@ -534,6 +599,8 @@ class SuperLuchin:
                             self.ver_incendios()
                         elif opcion == 4:
                             self.agregar_usuario()
+                        elif opcion == 6:
+                            self.agregar_incendio()
                         elif opcion == 8:
                             self.cambiar_fecha_hora()
                             contador = False
@@ -558,11 +625,55 @@ class SuperLuchin:
                     verificador = False
             if verificador:
                 print("Recurso no valido")
-        id =len(self.lista_usuarios)-1
-        usuario = Usuario(id=id,nombre=nombre,contrasena=contrasena,recurso_id=recurso_id)
+        id = len(self.lista_usuarios)
+        usuario = Usuario(id=id, nombre=nombre, contrasena=contrasena, recurso_id=recurso_id)
         self.lista_usuarios.append(usuario)
+        self.archivos.sobreescribir_usuarios(self.lista_usuarios)
+        print("Usuario agregado correctamente\n")
 
-
+    def agregar_incendio(self):
+        verificador1 = True
+        verificador2 = True
+        verificador3 = True
+        verificador4 = True
+        while verificador1:
+            lat = input("Ingrese latitud: ")
+            try:
+                val = int(lat)
+                verificador1 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador2:
+            lon = input("Ingrese Longitud: ")
+            try:
+                val = int(lon)
+                verificador2 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador3:
+            potencia = input("Ingrese potencia: ")
+            try:
+                val = int(potencia)
+                verificador3 = False
+            except ValueError:
+                print("dato incorrecto")
+        while verificador4:
+            anio = self.fecha.ver_anio()
+            mes = self.fecha.ver_mes()
+            dia = self.fecha.ver_dia()
+            fecha_inicio = ("{2}-{1}-{0}".format(dia, mes, anio))
+            hora_inicio = self.fecha.ver_hora()
+            fecha_inicio = fecha_inicio + " " + hora_inicio
+            if not FechaYHora.comparar_fecha(fecha_inicio, self.fecha_y_hora_actual):
+                verificador4 = False
+            else:
+                print("Fecha incorrecta, debe ser anterior a la fecha actual")
+        id = len(self.lista_incendios)
+        incendio = Incendio(id=id, lat=lat, lon=lon, potencia=potencia, fecha_inicio=fecha_inicio)
+        self.lista_incendios.append(incendio)
+        self.lista_incendios_ocurridos.append(incendio)
+        print("Incendio agregado correctamente\n")
+        self.archivos.sobreescribir_incendios(self.lista_incendios)
     def cerrar_sesion(self):
         self.lista_recursos = []
         self.lista_usuarios = []
@@ -580,10 +691,10 @@ class SuperLuchin:
 
     def ver_incendios(self):
         self.incendios_activos()
-        if len(self.lista_incendios) == 0:
+        if len(self.lista_incendios_ocurridos) == 0:
             print("No hay incendios activos")
         else:
-            for incendios in self.lista_incendios:
+            for incendios in self.lista_incendios_ocurridos:
                 print(incendios)
                 print(
                     "El Incendio {0} esta {1}, porcentaje de extincion: {3}, recursos asigandos: {2}, puntos de poder: {4}".format(
