@@ -1,4 +1,5 @@
 import math
+from modulo_FechaYHora import FechaYHora
 
 
 # lluvia se considera el total que cayo
@@ -30,6 +31,7 @@ class Recurso:
         self.estado = "standby"
         self.fecha_inicio = ""
         self.fecha_llegada = "2017-02-28 00:00:00"
+        self.fecha_llegada_base = ""
         self.fecha_salida_incendio = ""
         self.id_incendio_asignado = ""
         self.distancia_objetivo = 0
@@ -66,19 +68,24 @@ class Incendio:
         if self.puntos_poder > self.puntos_poder_extintos:
             return "activo"
         else:
+            self.potencia = 0
             return "apagado"
 
     @property
     def porcentaje_de_extincion(self):
         if self.puntos_poder != 0:
-            return float(self.puntos_poder_extintos) / float(self.puntos_poder)
+            return float(self.puntos_poder_extintos) / float(self.puntos_poder_historios)
 
         else:
             return "100%"
 
     @property
     def puntos_poder(self):
-        return (math.pi * (self.radio ** 2)) * self.potencia
+        return ((math.pi * ((self.radio * 1000) ** 2)) * self.potencia) - self.puntos_poder_extintos
+
+    @property
+    def puntos_poder_historios(self):
+        return ((math.pi * ((self.radio * 1000) ** 2)) * self.potencia)
 
     def __str__(self):
         cadena = "id: {}, lat: {}, lon : {}, potencia : {}, fecha inicio: {}".format(self.id, self.lat, self.lon,
@@ -104,6 +111,8 @@ class Archivos:
         self.primera_linea_incendios = ""
         self.primera_linea_recursos = ""
         self.primera_linea_metereologia = ""
+        # esta lista es para almacenar datos de incendios en caso de que se entre en pasado
+        self.datos_incendios = []
 
     def cargar_usuarios(self):
         self.lista_usuarios = []
@@ -210,58 +219,100 @@ class Archivos:
         try:
             with open("datos_simulacion.txt")as archivo_simulacion:
                 for linea in archivo_simulacion:
-                    fecha = linea.strip("\n").split(",")[0]
-                    if FechaYHora.comparar_fecha(fecha_actual, fecha):
+                    lista_linea = linea.strip("\n").split(";")
+                    if lista_linea[0] == "recurso":
                         for recurso in lista_recursos:
-                            if "recuros" == linea.strip("\n").split(",")[1] and recurso.id == \
-                                    linea.strip("\n").split(",")[1]:
-                                recurso.horas_trabajadas = linea.strip("\n").split(",")[2]
-                                recurso.lat_actual = linea.strip("\n").split(",")[3]
-                                recurso.lon_actual = linea.strip("\n").split(",")[4]
-                                recurso.id_incendio_asignado = linea.strip("\n").split(",")[5]
+                            if str(recurso.id) == str(lista_linea[2]) and lista_linea[1] != "":
+                                fecha_guardado = lista_linea[1]
+                                if FechaYHora.comparar_fecha(fecha_actual, fecha_guardado):
+                                    recurso.lat_actual = float(lista_linea[3])
+                                    recurso.lon_actual = float(lista_linea[4])
+                                    recurso.total_horas_trabajadas = lista_linea[5]
+                                    recurso.horas_trabajadas = float(lista_linea[6])
+                                    recurso.estado = lista_linea[7]
+                                    recurso.fecha_inicio = lista_linea[8]
+                                    recurso.fecha_llegada = lista_linea[9]
+                                    recurso.fecha_salida_incendio = lista_linea[10]
+                                    recurso.id_incendio_asignado = lista_linea[11]
+                                    recurso.distancia_objetivo = float(lista_linea[12])
+                                    recurso.distancia_recorrida = float(lista_linea[13])
+                                    recurso.puntos_apagados = float(lista_linea[14])
+                                    recurso.fecha_ultima_ejecucion = lista_linea[15]
+                                    recurso.autonomia_restante = float(lista_linea[16])
+                    elif lista_linea[0] == "incendio":
                         for incendio in lista_incendios:
-                            if "incendio" == linea.strip("\n").split(",")[1] and incendio.id == \
-                                    linea.strip("\n").split(",")[1]:
-                                incendio.puntos_poder_extintos = linea.strip("\n").split(",")[2]
-                                incendio.recursos_usados = linea.strip("\n").split(",")[3]
-                                incendio.fecha_apagado = linea.strip("\n").split(",")[4]
-
+                            if str(incendio.id) == str(lista_linea[2]) and lista_linea[1] != "":
+                                fecha_guardado = lista_linea[1]
+                                if FechaYHora.comparar_fecha(fecha_actual, fecha_guardado):
+                                    incendio.fecha_ultimo_recurso = lista_linea[1]
+                                    incendio.id = lista_linea[2]
+                                    incendio.radio = float(lista_linea[3])
+                                    incendio.horas_ya_simuladas = []
+                                    horas = lista_linea[4].split(",")
+                                    for hora in horas:
+                                        incendio.horas_ya_simuladas.append(hora)
+                                    incendio.recursos_usados = []
+                                    recursos_usados = lista_linea[5].split(",")
+                                    for recurso in recursos_usados:
+                                        incendio.recursos_usados.append(recurso)
+                                    incendio.puntos_poder_extintos = float(lista_linea[6])
+                                    incendio.ultima_condicion = lista_linea[7]
+                                    incendio.fecha_apagado = lista_linea[8]
+                                    incendio.fecha_ultima_simulacion = lista_linea[9]
+                                    self.datos_incendios.append(incendio)
         except FileNotFoundError:
             return None
 
     def sobreescribir_simulacion(self, lista_incendios, lista_recursos):
         archivo = open("datos_simulacion.txt", "w")
+        # este for es para recuperar datos incendios pasados
+        for incendio in self.datos_incendios:
+            fila = ""
+            fila += "incendio" + ";"
+            fila += str(incendio.fecha_ultimo_recurso) + ";"
+            fila += str(incendio.id) + ";"
+            fila += str(incendio.radio) + ";"
+            fila += str(incendio.horas_ya_simuladas) + ";"
+            fila += str(incendio.recursos_usados) + ";"
+            fila += str(incendio.puntos_poder_extintos) + ";"
+            fila += str(incendio.ultima_condicion) + ";"
+            fila += str(incendio.fecha_apagado) + ";"
+            fila += str(incendio.fecha_ultima_simulacion) + "\n"
+            archivo.write(fila)
         for incendio in lista_incendios:
             fila = ""
             if len(incendio.recursos_usados) > 0:
+                fila += "incendio" + ";"
+                fila += str(incendio.fecha_ultimo_recurso) + ";"
                 fila += str(incendio.id) + ";"
-                fila += str(incendio.fecha_ultima_simulacion) + ";"
                 fila += str(incendio.radio) + ";"
                 fila += str(incendio.horas_ya_simuladas) + ";"
                 fila += str(incendio.recursos_usados) + ";"
                 fila += str(incendio.puntos_poder_extintos) + ";"
                 fila += str(incendio.ultima_condicion) + ";"
                 fila += str(incendio.fecha_apagado) + ";"
-                fila += str(incendio.fecha_ultimo_recurso) + "\n"
+                fila += str(incendio.fecha_ultima_simulacion) + "\n"
                 archivo.write(fila)
         for recursos in lista_recursos:
             fila = ""
-            if recursos.total_horas_trabajadas > 0:
-                fila += recursos.fecha_ultima_ejecucion + "\n"
+            if recursos.total_horas_trabajadas > 0 or recursos.estado != "stanby":
+                fila += "recurso" + ";"
+                fila += recursos.fecha_llegada_base + ";"
                 fila += recursos.id + ";"
-                fila += recursos.lat_actual + ";"
-                fila += recursos.lon_actual + ";"
-                fila += recursos.total_horas_trabajadas + ";"
-                fila += recursos.horas_trabajadas + ";"
-                fila += recursos.estado + ";"
+                fila += str(recursos.lat_actual) + ";"
+                fila += str(recursos.lon_actual) + ";"
+                fila += str(recursos.total_horas_trabajadas) + ";"
+                fila += str(recursos.horas_trabajadas) + ";"
+                fila += str(recursos.estado) + ";"
                 fila += recursos.fecha_inicio + ";"
                 fila += recursos.fecha_llegada + ";"
                 fila += recursos.fecha_salida_incendio + ";"
-                fila += recursos.id_incendio_asignado + ";"
-                fila += recursos.distancia_objetivo + ";"
-                fila += recursos.distancia_recorrida + ";"
-                fila += recursos.puntos_apagados + ";"
-                fila += recursos.autonomia_restante + ";"
+                fila += str(recursos.id_incendio_asignado) + ";"
+                fila += str(recursos.distancia_objetivo) + ";"
+                fila += str(recursos.distancia_recorrida) + ";"
+                fila += str(recursos.puntos_apagados) + ";"
+                fila += str(recursos.fecha_ultima_ejecucion) + ";"
+                fila += str(recursos.autonomia_restante) + "\n"
                 archivo.write(fila)
         archivo.close()
 
@@ -414,241 +465,6 @@ class Archivos:
         archivo.close()
 
 
-class FechaYHora:
-    def __init__(self):
-        self.bisiesto = False
-        self.anio = 0
-        self.mes = 0
-        self.dia = 0
-        self.hora = 0
-        self.minuto = 0
-        self.contador = True
-
-    def ver_anio(self):
-        self.contador = True
-        while self.contador:
-            anio = (input("ingrese año: "))
-            try:
-                val = int(anio)
-                anio = int(anio)
-                if self.es_biciesto(anio):
-                    self.anio = anio
-                    self.bisiesto = True
-                    self.contador = False
-                    return self.anio
-                else:
-                    self.bisiesto = False
-                    self.anio = anio
-                    self.contador = False
-                    return self.anio
-            except ValueError:
-                print("Año no valido")
-
-    def ver_mes(self):
-        self.contador = True
-        while self.contador:
-            mes = (input("ingrese mes en formato numero (ej: marzo = 3): "))
-            try:
-                val = int(mes)
-                mes = int(mes)
-                meses = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]
-                self.mes = mes
-                if int(mes) in meses:
-                    self.contador = False
-                    return mes
-                else:
-                    print("mes no valido")
-            except ValueError:
-                print("mes no valido")
-
-    def ver_dia(self):
-        self.contador = True
-        while self.contador:
-            dia = input("Ingrese dia: ")
-            try:
-                val = int(dia)
-                dia = int(dia)
-                if self.mes in [1, 3, 5, 7, 8, 10, 12]:
-                    if dia in range(1, 32):
-                        self.dia = dia
-                        self.contador = False
-                        return self.dia
-                    else:
-                        print("Dia no valido, debe estar entre 1:31")
-                elif self.mes in [4, 6, 9, 11]:
-                    if dia in range(1, 31):
-                        self.dia = dia
-                        self.contador = False
-                        return self.dia
-                    else:
-                        print("Dia no valido, debe estar entre 1:30")
-                elif self.mes in [2]:
-                    if self.bisiesto:
-                        if dia in range(1, 30):
-                            self.dia = dia
-                            self.contador = False
-                            return self.dia
-                        else:
-                            print("Dia no valido, debe estar entre 1:29")
-                    else:
-                        if dia in range(1, 29):
-                            self.dia = dia
-                            self.contador = False
-                            return self.dia
-                        else:
-                            print("Dia no valido, debe estar entre 1:28")
-            except ValueError:
-                print("Dia no valido")
-
-    def ver_hora(self):
-        self.contador = True
-        while self.contador:
-            hora = input("Ingrese hora (0:23): ")
-            try:
-                val = int(hora)
-                hora = int(hora)
-                if hora in range(0, 24):
-                    if hora // 10 == 0:
-                        hora = "0" + str(hora)
-                    minuto = input("Ingrese minuto (0:59) ")
-                    try:
-                        val = int(minuto)
-                        minuto = int(minuto)
-                        if minuto in range(0, 59):
-                            if minuto // 10 == 0:
-                                minuto = "0" + str(minuto)
-                            self.hora = "{0}:{1}:00".format(hora, minuto)
-                            self.contador = False
-                            return self.hora
-                        else:
-                            print("Minutos no validos")
-                    except ValueError:
-                        print("Minutos no validos")
-                else:
-                    print("hora no valida")
-            except ValueError:
-                print("Hora no valida")
-
-    # Funcion para ver si fecha1 es despues de fecha2
-    def comparar_fecha(fecha1, fecha2):
-        fecha_1 = fecha1.split(" ")[0]
-        hora_1 = fecha1.split(" ")[1]
-        anio_1 = int(fecha_1.split("-")[0])
-        mes_1 = int(fecha_1.split("-")[1])
-        dia_1 = int(fecha_1.split("-")[2])
-        minuto_1 = int(hora_1.split(":")[1])
-        horaa_1 = int(hora_1.split(":")[0])
-        fecha_2 = fecha2.split(" ")[0]
-        hora_2 = fecha2.split(" ")[1]
-        anio_2 = int(fecha_2.split("-")[0])
-        mes_2 = int(fecha_2.split("-")[1])
-        dia_2 = int(fecha_2.split("-")[2])
-        minuto_2 = int(hora_2.split(":")[1])
-        horaa_2 = int(hora_2.split(":")[0])
-        if anio_1 > anio_2:
-            return True
-        elif anio_1 == anio_2:
-            if mes_1 > mes_2:
-                return True
-            elif mes_1 == mes_2:
-                if dia_1 > dia_2:
-                    return True
-                elif dia_1 == dia_2:
-                    if horaa_1 > horaa_2:
-                        return True
-                    elif horaa_1 == horaa_2:
-                        if minuto_1 >= minuto_2:
-                            return True
-                        else:
-                            return False
-                    else:
-                        return False
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
-
-    def es_biciesto(self, anio=0, **kwargs):
-        if anio % 4 == 0:
-            if str(anio)[-1] == "0" and str(anio)[-2] == "0":
-                if anio % 400 == 0:
-                    return True
-                else:
-                    return False
-            else:
-                return True
-        else:
-            return False
-
-    def siguiente_minuto(fecha_ingresada):
-        hora = fecha_ingresada.split(" ")[1]
-        hora = hora.split(":")
-        minuto = int(hora[1])
-        hora = int(hora[0])
-        fecha = fecha_ingresada.split(" ")[0]
-        fecha = fecha.split("-")
-        dia = int(fecha[2])
-        mes = int(fecha[1])
-        anio = int(fecha[0])
-        if minuto < 59:
-            minuto += 1
-        else:
-            minuto = 0
-            if hora < 23:
-                hora += 1
-            else:
-                hora = 0
-                if mes in [1, 3, 5, 7, 8, 10, 12]:
-                    if dia < 31:
-                        dia += 1
-                    else:
-                        dia = 0
-                        if mes < 12:
-                            mes += 1
-                        else:
-                            anio += 1
-                elif mes in [4, 6, 9, 11]:
-                    if dia < 30:
-                        dia += 1
-                    else:
-                        dia = 0
-                        mes += 1
-                elif mes in [2]:
-                    if FechaYHora.es_biciesto(self="", anio=anio):
-                        if dia < 29:
-                            dia += 1
-                        else:
-                            dia = 0
-                            mes += 1
-                    else:
-                        if dia < 28:
-                            dia += 1
-                        else:
-                            dia = 0
-                            mes += 1
-        siguiente_fecha = "{0}-{1}-{2} {3}:{4}:00".format(anio, mes, dia, hora, minuto)
-        return siguiente_fecha
-
-    # cuenta los minutos entre fecha2(mayor) y fecha1(menor)
-    def contar_minutos(fecha1, fecha2):
-        fecha_2 = fecha2.split(" ")[0]
-        hora_2 = fecha2.split(" ")[1]
-        anio_2 = int(fecha_2.split("-")[0])
-        mes_2 = int(fecha_2.split("-")[1])
-        dia_2 = int(fecha_2.split("-")[2])
-        minuto_2 = int(hora_2.split(":")[1])
-        horaa_2 = int(hora_2.split(":")[0])
-        fecha2 = "{0}-{1}-{2} {3}:{4}:00".format(anio_2, mes_2, dia_2, horaa_2, minuto_2)
-        contador = 0
-        while fecha1 != fecha2:
-            contador += 1
-            y = str(FechaYHora.siguiente_minuto(fecha1))
-            fecha1 = y
-        return contador
-
-
 class SuperLuchin:
     def __init__(self):
         self.lista_usuarios = []
@@ -686,6 +502,9 @@ class SuperLuchin:
             if identificador is False:
                 print("clave o usuario incorrecto")
         mensaje = "-- Bienvenido {0} ".format(self.usuario_activo.nombre)
+        self.cambiar_fecha_hora()
+        print(self.fecha_y_hora_actual)
+        self.cargar_archivos()
         for recursos in self.lista_recursos:
             if self.usuario_activo.recurso_id == recursos.id:
                 mensaje1 = "miembro de {0}--".format(recursos.tipo)
@@ -694,12 +513,19 @@ class SuperLuchin:
             else:
                 mensaje1 = "miembro de la ANAF--"
         print(mensaje + mensaje1)
-        self.cambiar_fecha_hora()
-        print(self.fecha_y_hora_actual)
+        print("calculando simulacion a la fecha ingresada, favor esperar")
+        for recursos in self.lista_recursos:
+            self.simulacion_recurso(recursos)
+        self.menu()
+
+    def cargar_archivos(self):
         self.lista_metereologia = self.archivos.cargar_meteorologia()
         self.lista_incendios = self.archivos.cargar_incendios()
         self.lista_incendios_ocurridos = self.archivos.cargar_incendios()
-        self.menu()
+        self.archivos.cargar_simulacion(self.fecha_y_hora_actual, self.lista_recursos, self.lista_incendios_ocurridos)
+
+    def sobreescribir_archivos(self):
+        self.archivos.sobreescribir_simulacion(self.lista_incendios_ocurridos, self.lista_recursos)
 
     def menu(self):
         if self.recurso_activo == []:
@@ -714,6 +540,7 @@ class SuperLuchin:
                     opcion = int(opcion)
                     if int(opcion) in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]:
                         if opcion == 0:
+                            self.sobreescribir_archivos()
                             self.cerrar_sesion()
                             contador = False
                         elif opcion == 1:
@@ -731,23 +558,65 @@ class SuperLuchin:
                         elif opcion == 7:
                             self.consultas_avanzadas()
                         elif opcion == 8:
+                            self.sobreescribir_archivos()
                             self.cambiar_fecha_hora()
                         elif opcion == 9:
                             self.asignar_recurso()
                         elif opcion == 10:
-                            self.ver_recurso()
+                            self.sobreescribir_archivos()
+                            print("Programa cerrado correctament")
+                            contador = False
                     else:
                         print("Opcion no valida")
                 except ValueError:
                     print("Opcion no valida")
         else:
-            print("no Anaf")
+            recurso = self.recurso_activo
+            self.simulacion_recurso(recurso)
+            print("------ Barra Estado Recurso ---------")
+            print(recurso)
+            print("estado: {}, ubicacion actual: lat={} lon={}".format(recurso.estado, recurso.lat_actual,
+                                                                       recurso.lon_actual))
+            if recurso.estado != "standby":
+                horas_restantes = float(recurso.autonomia) - float(recurso.horas_trabajadas)
+                print("Horas trabajadas: {},horas restantes:{}".format(recurso.horas_trabajadas, horas_restantes))
+            elif recurso.estado != "standby" and recurso.estado != "trabajando en incendio":
+                print("distancia a objetivo{}".format(recurso.distancia_objetivo))
+            contador1 = True
+            print("---------------------------------")
+            while contador1:
+                print("Opciones:\n0 : Cerrar sesion\n1 : Ver datos incendio\n2 :Cambiar Fecha y Hora\n3: Salir ")
+                opcion = input("Ingrese alguna opcion: ")
+                try:
+                    val = int(opcion)
+                    opcion = int(opcion)
+                    if int(opcion) in [0, 1, 2, 3]:
+                        if opcion == 0:
+                            self.sobreescribir_archivos()
+                            self.cerrar_sesion()
+                            contador = False
+                        elif opcion == 1:
+                            self.ver_incendio()
+                        elif opcion == 2:
+                            self.sobreescribir_archivos()
+                            self.cambiar_fecha_hora()
+                        elif opcion == 3:
+                            self.sobreescribir_archivos()
+                            print("Programa cerrado correctamente")
+                            contador = False
+                    else:
+                        print("Opcion no valida")
+                except ValueError:
+                    print("Opcion no valida")
 
     def cerrar_sesion(self):
-        self.lista_recursos = []
         self.lista_usuarios = []
         self.usuario_activo = []
+        self.lista_recursos = []
         self.recurso_activo = []
+        self.lista_incendios = []
+        self.lista_incendios_ocurridos = []
+        self.lista_metereologia = []
         self.fecha_actual = ""
         self.hora_actual = ""
         self.archivos = Archivos()
@@ -755,6 +624,7 @@ class SuperLuchin:
         self.anio = 0
         self.mes = 0
         self.dia = 0
+        self.fecha_y_hora_actual = ""
         print("---- Bienvenido al Software SuperLuchin -----")
         self.iniciar_sesion()
 
@@ -803,17 +673,19 @@ class SuperLuchin:
                 return True
             else:
                 print("Recurso en delay")
-        elif recurso.estado == "en ruta a incendio":
+        if recurso.estado == "en ruta a incendio":
             for incendio in self.lista_incendios_ocurridos:
                 if int(incendio.id) == int(recurso.id_incendio_asignado):
                     break
             if len(incendio.recursos_usados) >= 1:
-                print("hola")
+                recurso.horas_trabajadas = float(recurso.horas_trabajadas)
+                recurso.total_horas_trabajadas = float(recurso.total_horas_trabajadas)
+                incendio.radio = float(incendio.radio)
                 self.simulacion_incendio_solo(incendio, incendio.fecha_ultimo_recurso, recurso.fecha_inicio)
                 fecha1 = recurso.fecha_ultima_ejecucion
                 fecha2 = FechaYHora.siguiente_minuto(recurso.fecha_ultima_ejecucion)
                 minutos = FechaYHora.contar_minutos(recurso.fecha_inicio, self.fecha_y_hora_actual)
-                recurso.autonomia_restante = recurso.autonomia - recurso.horas_trabajadas
+                recurso.autonomia_restante = float(recurso.autonomia) - float(recurso.horas_trabajadas)
                 x = (float(recurso.lat_actual) - float(incendio.lat)) ** 2
                 y = (float(recurso.lon_actual) - float(incendio.lon)) ** 2
                 distancia_grado = math.sqrt(x + y)
@@ -821,11 +693,10 @@ class SuperLuchin:
                 cos_o = ((float(recurso.lat) - float(incendio.lat)) * 110) / distancia_km
                 sen_o = ((float(recurso.lon) - float(incendio.lon)) * 110) / distancia_km
                 velocidad_km_min = (((float(recurso.velocidad)) / 1000) * 60)
-                recurso.distancia_recorrida = velocidad_km_min * (recurso.horas_trabajadas * 60)
+                recurso.distancia_recorrida = velocidad_km_min * ((float(recurso.horas_trabajadas)) * 60)
                 contador = True
-                while minutos > 0 and (
-                    (recurso.autonomia_restante * 60) * velocidad_km_min) > recurso.distancia_recorrida and contador:
-                    if distancia_km > (incendio.radio + recurso.distancia_recorrida):
+                while minutos > 0 and contador:
+                    if distancia_km > (float(incendio.radio) + recurso.distancia_recorrida):
                         recurso.horas_trabajadas += float(1 / 60)
                         recurso.total_horas_trabajadas += float(1 / 60)
                         recurso.autonomia_restante = float(recurso.autonomia) - recurso.horas_trabajadas
@@ -842,8 +713,10 @@ class SuperLuchin:
                         recurso.estado = "trabajando en incendio"
                         recurso.fecha_llegada = fecha2
                         contador = False
-                    elif ((recurso.autonomia_restante * 60) * velocidad_km_min) <= recurso.distancia_recorrida:
+                    if ((recurso.autonomia_restante * 60) * velocidad_km_min) <= recurso.distancia_recorrida:
                         recurso.estado = "en ruta a base"
+                        recurso.fecha_ultima_ejecucion = fecha2
+                        recurso.fecha_salida_incendio = fecha2
                         contador = False
         if recurso.estado == "trabajando en incendio":
             for incendio in self.lista_incendios_ocurridos:
@@ -852,7 +725,7 @@ class SuperLuchin:
             velocidad_km_min = (((float(recurso.velocidad)) / 1000) * 60)
             minutos = float(FechaYHora.contar_minutos(recurso.fecha_ultima_ejecucion, self.fecha_y_hora_actual))
             minutos_disponibles = ((recurso.autonomia_restante) * 60) - (
-            recurso.distancia_recorrida / float(velocidad_km_min))
+                recurso.distancia_recorrida / float(velocidad_km_min))
             fecha = recurso.fecha_ultima_ejecucion
             if minutos_disponibles > 0:
                 incendio.puntos_poder_extintos += (float(recurso.tasa_extincion) / 60) * min(minutos,
@@ -879,25 +752,28 @@ class SuperLuchin:
                 recurso.distancia_objetivo = recurso.distancia_recorrida
                 recurso.distancia_recorrida = 0
             minutos_disponibles = FechaYHora.contar_minutos(recurso.fecha_ultima_ejecucion, self.fecha_y_hora_actual)
-            tiempo_llegada = (recurso.distancia_objetivo-recurso.distancia_recorrida) / ((float(recurso.velocidad) / 1000) * 60)
+            tiempo_llegada = (recurso.distancia_objetivo - recurso.distancia_recorrida) / (
+                (float(recurso.velocidad) / 1000) * 60)
             fecha = recurso.fecha_ultima_ejecucion
             if minutos_disponibles >= tiempo_llegada:
                 recurso.estado = "standby"
-                recurso.total_horas_trabajadas += (tiempo_llegada/60)
+                recurso.total_horas_trabajadas += (tiempo_llegada / 60)
                 while tiempo_llegada > 0:
                     fecha = FechaYHora.siguiente_minuto(fecha)
                     tiempo_llegada -= 1
                 recurso.horas_trabajadas = 0
                 recurso.autonomia_restante = recurso.autonomia
                 recurso.fecha_llegada = fecha
+                recurso.fecha_llegada_base = fecha
                 recurso.lat_actual = recurso.lat
                 recurso.lon_actual = recurso.lon
+                recurso.id_incendio_asignado = ""
                 if FechaYHora.contar_minutos(recurso.fecha_llegada, self.fecha_y_hora_actual) > int(recurso.delay):
                     print("Recurso listo para ser usado de nuevo")
                 else:
                     print("Recurso en delay")
             elif minutos_disponibles < tiempo_llegada:
-                recurso.distancia_recorrida = ((float(recurso.velocidad)/1000)*60)*minutos_disponibles
+                recurso.distancia_recorrida = ((float(recurso.velocidad) / 1000) * 60) * minutos_disponibles
                 recurso.horas_trabajadas += minutos_disponibles / 60
                 recurso.total_horas_trabajadas += minutos_disponibles / 60
                 recurso.autonomia_restante -= minutos_disponibles / 60
@@ -910,6 +786,20 @@ class SuperLuchin:
                 sen_o = ((float(recurso.lon) - float(incendio.lon)) * 110) / distancia_km
                 recurso.lon_actual = ((recurso.distancia_recorrida * cos_o) / 110) + int(recurso.lon_actual)
                 recurso.lat_actual = ((recurso.distancia_recorrida * sen_o) / 110) + int(recurso.lat_actual)
+
+    def ver_incendio(self, recurso):
+        if recurso.estado == "en ruta a incendio" or recurso.estado == "trabajando en incendio":
+            for incendio in self.lista_incendios_ocurridos:
+                if str(recurso.id_incendio_asignado) == str(incendio.id):
+                    print("Datos incendio:")
+                    print("ID: {},lat: {},lon: {},potencia; {},fecha_inicio: {},radio: {}".format(incendio.id,
+                                                                                                  incendio.lat,
+                                                                                                  incendio.lat,
+                                                                                                  incendio.potencia,
+                                                                                                  incendio.fecha_inicio,
+                                                                                                  incendio.radio))
+        else:
+            print("No tiene incendio asignado o se encuentra rumbo a base")
 
     def incendios_activos(self):
         incendios_inactivos = []
@@ -1008,12 +898,12 @@ class SuperLuchin:
         contador = True
         while contador:
             print("Opciones:\n0 : volver \n1 : Ver incendios apagados\n2 : Ver recursos más usados\n"
-                  "3 : Recurso más efectivo\n")
+                  "3 : Recurso más efectivo\n4 : Ver incendios activos")
             opcion = input("Ingrese alguna opcion: ")
             try:
                 val = int(opcion)
                 opcion = int(opcion)
-                if int(opcion) in [0, 1, 2, 3]:
+                if int(opcion) in [0, 1, 2, 3, 4]:
                     if opcion == 0:
                         contador = False
                     elif opcion == 1:
@@ -1022,6 +912,8 @@ class SuperLuchin:
                         self.ver_recurso_mas_usado()
                     elif opcion == 3:
                         self.recurso_mas_efectivo()
+                    elif opcion == 4:
+                        self.ver_incendios_activos()
                 else:
                     print("Opcion no valida")
             except ValueError:
@@ -1034,13 +926,21 @@ class SuperLuchin:
                     "id: {},fecha inicio: {},fecha apagado: {}, recursos: {}".format(incendio.id, incendio.fecha_inicio,
                                                                                      incendio.fecha_apagado,
                                                                                      incendio.recursos_usados))
+
+    def ver_incendios_activos(self):
+        for incendio in self.lista_incendios_ocurridos:
+            if incendio.activo == "activo":
+                print(
+                    "id: {},fecha inicio: {}, recursos: {}".format(incendio.id, incendio.fecha_inicio,
+                                                                   incendio.recursos_usados))
+
     def ver_recurso_mas_usado(self):
-#al no tener hora, se asume que todos los recursos parten al mismo tiempo
+        # al no tener hora, se asume que todos los recursos parten al mismo tiempo
         lista = []
         for recurso in self.lista_recursos:
             texto = ""
             texto += str(recurso.total_horas_trabajadas)
-            texto +=":"+str(recurso.id)
+            texto += ":" + str(recurso.id)
             lista.append(texto)
         lista.sort(reverse=True)
         for elemento in lista:
@@ -1049,8 +949,8 @@ class SuperLuchin:
     def recurso_mas_efectivo(self):
         lista = []
         for recurso in self.lista_recursos:
-            normalizar = recurso.puntos_apagados/recurso.tasa_extincion
-            efectividad = normalizar/recurso.total_horas_trabajadas
+            normalizar = float(recurso.puntos_apagados) / float(recurso.tasa_extincion)
+            efectividad = normalizar / float(recurso.total_horas_trabajadas)
             texto = ""
             texto += str(efectividad)
             texto += ":" + str(recurso.id)
@@ -1225,6 +1125,7 @@ class SuperLuchin:
                     recurso.estado = "en ruta a incendio"
                     recurso.fecha_inicio = self.fecha_y_hora_actual
                     recurso.fecha_ultima_ejecucion = self.fecha_y_hora_actual
+                    recurso.fecha_llegada_base = self.fecha_y_hora_actual
                     break
             if validador:
                 print("Error en id")
