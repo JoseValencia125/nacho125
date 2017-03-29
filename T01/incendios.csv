@@ -1,2 +1,3 @@
 id:string,lat:float,lon:float,potencia:int,fecha_inicio:string
 83,-33.34082807319898,-71.78567675306304,213,2017-03-01 13:38:00
+1,3,3,3,3-3-3 03:03:00

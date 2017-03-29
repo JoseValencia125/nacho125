@@ -1,469 +1,12 @@
 import math
+import shutil
 from modulo_FechaYHora import FechaYHora
-
-
-# lluvia se considera el total que cayo
-
-class Usuario:
-    def __init__(self, id="", nombre="", contrasena="", recurso_id=""):
-        self.id = id
-        self.nombre = nombre
-        self.contrasena = contrasena
-        self.recurso_id = recurso_id
-
-
-class Recurso:
-    def __init__(self, id="", tipo="", velocidad="", lat="", lon="", autonomia="", delay="", tasa_extincion="",
-                 costo=""):
-        self.id = id
-        self.tipo = tipo
-        self.velocidad = velocidad
-        self.lat = float(lat)
-        self.lon = float(lon)
-        self.autonomia = float(autonomia)
-        self.delay = delay
-        self.tasa_extincion = tasa_extincion
-        self.costo = costo
-        self.lat_actual = self.lat
-        self.lon_actual = self.lon
-        self.total_horas_trabajadas = float(0)
-        self.horas_trabajadas = float(0)
-        self.estado = "standby"
-        self.fecha_inicio = ""
-        self.fecha_llegada = "2017-02-28 00:00:00"
-        self.fecha_llegada_base = ""
-        self.fecha_salida_incendio = ""
-        self.id_incendio_asignado = ""
-        self.distancia_objetivo = 0
-        self.distancia_recorrida = 0
-        self.puntos_apagados = 0
-        self.autonomia_restante = autonomia
-        self.fecha_ultima_ejecucion = self.fecha_inicio
-
-    def __str__(self):
-        cadena = "id={}, tipo={}, velocidad={}, lat={}, lon={}, autonomia={}, delay={}, tasa_extincion={}, costo={}".format(
-            self.id, self.tipo, self.velocidad, self.lat, self.lon, self.autonomia, self.delay, self.tasa_extincion,
-            self.costo)
-        return cadena
-
-
-class Incendio:
-    def __init__(self, id="", lat="", lon="", potencia="", fecha_inicio=""):
-        self.id = id
-        self.lat = lat
-        self.lon = lon
-        self.radio = float(0)
-        self.potencia = int(potencia)
-        self.puntos_poder_extintos = 0
-        self.fecha_inicio = fecha_inicio
-        self.recursos_usados = []
-        self.ultima_condicion = ""
-        self.fecha_apagado = ""
-        self.fecha_ultimo_recurso = self.fecha_inicio
-        self.horas_ya_simuladas = []
-        self.fecha_ultima_simulacion = ""
-
-    @property
-    def activo(self):
-        if self.puntos_poder > self.puntos_poder_extintos:
-            return "activo"
-        else:
-            self.potencia = 0
-            return "apagado"
-
-    @property
-    def porcentaje_de_extincion(self):
-        if self.puntos_poder != 0:
-            return float(self.puntos_poder_extintos) / float(self.puntos_poder_historios)
-
-        else:
-            return "100%"
-
-    @property
-    def puntos_poder(self):
-        return ((math.pi * ((self.radio * 1000) ** 2)) * self.potencia) - self.puntos_poder_extintos
-
-    @property
-    def puntos_poder_historios(self):
-        return ((math.pi * ((self.radio * 1000) ** 2)) * self.potencia)
-
-    def __str__(self):
-        cadena = "id: {}, lat: {}, lon : {}, potencia : {}, fecha inicio: {}".format(self.id, self.lat, self.lon,
-                                                                                     self.potencia, self.fecha_inicio)
-        return cadena
-
-
-class Meteorologia:
-    def __init__(self, id="", lat="", lon="", radio="", fecha_inicio="", fecha_termino="", tipo="", valor=""):
-        self.id = id
-        self.lat = lat
-        self.lon = lon
-        self.valor = valor
-        self.radio = radio
-        self.fecha_inicio = fecha_inicio
-        self.fecha_termino = fecha_termino
-        self.tipo = tipo
-
-
-class Archivos:
-    def __init__(self):
-        self.primera_linea_usuarios = ""
-        self.primera_linea_incendios = ""
-        self.primera_linea_recursos = ""
-        self.primera_linea_metereologia = ""
-        # esta lista es para almacenar datos de incendios en caso de que se entre en pasado
-        self.datos_incendios = []
-
-    def cargar_usuarios(self):
-        self.lista_usuarios = []
-        primera_linea = []
-        llaves_columnas = []
-        with open("usuarios.csv")as archivo_usuarios:
-            contador = 0
-            for linea in archivo_usuarios:
-                if contador < 1:
-                    self.primera_linea_usuarios = linea
-                    primera_linea = (linea.strip("\n").split(","))
-                    contador += 1
-                    for columna in primera_linea:
-                        llaves_columnas.append(columna.split(":")[0])
-                else:
-                    id_usuario = linea.strip("\n").split(",")[llaves_columnas.index("id")]
-                    contrasena_usuario = linea.strip("\n").split(",")[llaves_columnas.index("contraseña")]
-                    nombre_usuario = linea.strip("\n").split(",")[llaves_columnas.index("nombre")]
-                    recurso_usuario = linea.strip("\n").split(",")[llaves_columnas.index("recurso_id")]
-                    usuario1 = Usuario(id=id_usuario, nombre=nombre_usuario, contrasena=contrasena_usuario,
-                                       recurso_id=recurso_usuario)
-                    self.lista_usuarios.append(usuario1)
-        return self.lista_usuarios
-
-    def cargar_recursos(self):
-        self.lista_recursos = []
-        primera_linea = []
-        llaves_columnas = []
-        with open("recursos.csv")as archivo_recursos:
-            contador = 0
-            for linea in archivo_recursos:
-                if contador < 1:
-                    self.primera_linea_recursos = linea
-                    primera_linea = (linea.strip("\n").split(","))
-                    contador += 1
-                    for columna in primera_linea:
-                        llaves_columnas.append(columna.split(":")[0])
-                else:
-                    id_recurso = linea.strip("\n").split(",")[llaves_columnas.index("id")]
-                    tipo = linea.strip("\n").split(",")[llaves_columnas.index("tipo")]
-                    velocidad = linea.strip("\n").split(",")[llaves_columnas.index("velocidad")]
-                    lat = linea.strip("\n").split(",")[llaves_columnas.index("lat")]
-                    lon = linea.strip("\n").split(",")[llaves_columnas.index("lon")]
-                    autonomia = linea.strip("\n").split(",")[llaves_columnas.index("autonomia")]
-                    delay = linea.strip("\n").split(",")[llaves_columnas.index("delay")]
-                    tasa_extincion = linea.strip("\n").split(",")[llaves_columnas.index("tasa_extincion")]
-                    costo = linea.strip("\n").split(",")[llaves_columnas.index("costo")]
-                    recurso1 = Recurso(id=id_recurso, tipo=tipo, lat=lat, lon=lon, autonomia=autonomia, delay=delay,
-                                       tasa_extincion=tasa_extincion, costo=costo, velocidad=velocidad)
-                    self.lista_recursos.append(recurso1)
-        return self.lista_recursos
-
-    def cargar_incendios(self):
-        self.lista_incendios = []
-        primera_linea = []
-        llaves_columnas = []
-        with open("incendios.csv")as archivo_incendios:
-            contador = 0
-            for linea in archivo_incendios:
-                if contador < 1:
-                    self.primera_linea_incendios = linea
-                    primera_linea = (linea.strip("\n").split(","))
-                    contador += 1
-                    for columna in primera_linea:
-                        llaves_columnas.append(columna.split(":")[0])
-                else:
-                    id = linea.strip("\n").split(",")[llaves_columnas.index("id")]
-                    lat = linea.strip("\n").split(",")[llaves_columnas.index("lat")]
-                    lon = linea.strip("\n").split(",")[llaves_columnas.index("lon")]
-                    potencia = linea.strip("\n").split(",")[llaves_columnas.index("potencia")]
-                    fecha_inicio = linea.strip("\n").split(",")[llaves_columnas.index("fecha_inicio")]
-                    incendio1 = Incendio(id=id, lat=lat, lon=lon, potencia=potencia, fecha_inicio=fecha_inicio)
-                    self.lista_incendios.append(incendio1)
-        return self.lista_incendios
-
-    def cargar_meteorologia(self):
-        self.lista_meteorologia = []
-        primera_linea = []
-        llaves_columnas = []
-        with open("meteorologia.csv")as archivo_meteorologias:
-            contador = 0
-            for linea in archivo_meteorologias:
-                if contador < 1:
-                    self.primera_linea_metereologia = linea
-                    primera_linea = (linea.strip("\n").split(","))
-                    contador += 1
-                    for columna in primera_linea:
-                        llaves_columnas.append(columna.split(":")[0])
-                else:
-                    id = linea.strip("\n").split(",")[llaves_columnas.index("id")]
-                    tipo = linea.strip("\n").split(",")[llaves_columnas.index("tipo")]
-                    lat = linea.strip("\n").split(",")[llaves_columnas.index("lat")]
-                    lon = linea.strip("\n").split(",")[llaves_columnas.index("lon")]
-                    radio = linea.strip("\n").split(",")[llaves_columnas.index("radio")]
-                    valor = linea.strip("\n").split(",")[llaves_columnas.index("valor")]
-                    fecha_inicio = linea.strip("\n").split(",")[llaves_columnas.index("fecha_inicio")]
-                    fecha_termino = linea.strip("\n").split(",")[llaves_columnas.index("fecha_termino")]
-                    meteorologia1 = Meteorologia(id=id, lat=lat, lon=lon, radio=radio, fecha_inicio=fecha_inicio,
-                                                 fecha_termino=fecha_termino, tipo=tipo, valor=valor)
-                    self.lista_meteorologia.append(meteorologia1)
-        return self.lista_meteorologia
-
-    def cargar_simulacion(self, fecha_actual, lista_recursos, lista_incendios):
-        try:
-            with open("datos_simulacion.txt")as archivo_simulacion:
-                for linea in archivo_simulacion:
-                    lista_linea = linea.strip("\n").split(";")
-                    if lista_linea[0] == "recurso":
-                        for recurso in lista_recursos:
-                            if str(recurso.id) == str(lista_linea[2]) and lista_linea[1] != "":
-                                fecha_guardado = lista_linea[1]
-                                if FechaYHora.comparar_fecha(fecha_actual, fecha_guardado):
-                                    recurso.lat_actual = float(lista_linea[3])
-                                    recurso.lon_actual = float(lista_linea[4])
-                                    recurso.total_horas_trabajadas = lista_linea[5]
-                                    recurso.horas_trabajadas = float(lista_linea[6])
-                                    recurso.estado = lista_linea[7]
-                                    recurso.fecha_inicio = lista_linea[8]
-                                    recurso.fecha_llegada = lista_linea[9]
-                                    recurso.fecha_salida_incendio = lista_linea[10]
-                                    recurso.id_incendio_asignado = lista_linea[11]
-                                    recurso.distancia_objetivo = float(lista_linea[12])
-                                    recurso.distancia_recorrida = float(lista_linea[13])
-                                    recurso.puntos_apagados = float(lista_linea[14])
-                                    recurso.fecha_ultima_ejecucion = lista_linea[15]
-                                    recurso.autonomia_restante = float(lista_linea[16])
-                    elif lista_linea[0] == "incendio":
-                        for incendio in lista_incendios:
-                            if str(incendio.id) == str(lista_linea[2]) and lista_linea[1] != "":
-                                fecha_guardado = lista_linea[1]
-                                if FechaYHora.comparar_fecha(fecha_actual, fecha_guardado):
-                                    incendio.fecha_ultimo_recurso = lista_linea[1]
-                                    incendio.id = lista_linea[2]
-                                    incendio.radio = float(lista_linea[3])
-                                    incendio.horas_ya_simuladas = []
-                                    horas = lista_linea[4].split(",")
-                                    for hora in horas:
-                                        incendio.horas_ya_simuladas.append(hora)
-                                    incendio.recursos_usados = []
-                                    recursos_usados = lista_linea[5].split(",")
-                                    for recurso in recursos_usados:
-                                        incendio.recursos_usados.append(recurso)
-                                    incendio.puntos_poder_extintos = float(lista_linea[6])
-                                    incendio.ultima_condicion = lista_linea[7]
-                                    incendio.fecha_apagado = lista_linea[8]
-                                    incendio.fecha_ultima_simulacion = lista_linea[9]
-                                    self.datos_incendios.append(incendio)
-        except FileNotFoundError:
-            return None
-
-    def sobreescribir_simulacion(self, lista_incendios, lista_recursos):
-        archivo = open("datos_simulacion.txt", "w")
-        # este for es para recuperar datos incendios pasados
-        for incendio in self.datos_incendios:
-            fila = ""
-            fila += "incendio" + ";"
-            fila += str(incendio.fecha_ultimo_recurso) + ";"
-            fila += str(incendio.id) + ";"
-            fila += str(incendio.radio) + ";"
-            fila += str(incendio.horas_ya_simuladas) + ";"
-            fila += str(incendio.recursos_usados) + ";"
-            fila += str(incendio.puntos_poder_extintos) + ";"
-            fila += str(incendio.ultima_condicion) + ";"
-            fila += str(incendio.fecha_apagado) + ";"
-            fila += str(incendio.fecha_ultima_simulacion) + "\n"
-            archivo.write(fila)
-        for incendio in lista_incendios:
-            fila = ""
-            if len(incendio.recursos_usados) > 0:
-                fila += "incendio" + ";"
-                fila += str(incendio.fecha_ultimo_recurso) + ";"
-                fila += str(incendio.id) + ";"
-                fila += str(incendio.radio) + ";"
-                fila += str(incendio.horas_ya_simuladas) + ";"
-                fila += str(incendio.recursos_usados) + ";"
-                fila += str(incendio.puntos_poder_extintos) + ";"
-                fila += str(incendio.ultima_condicion) + ";"
-                fila += str(incendio.fecha_apagado) + ";"
-                fila += str(incendio.fecha_ultima_simulacion) + "\n"
-                archivo.write(fila)
-        for recursos in lista_recursos:
-            fila = ""
-            if recursos.total_horas_trabajadas > 0 or recursos.estado != "stanby":
-                fila += "recurso" + ";"
-                fila += recursos.fecha_llegada_base + ";"
-                fila += recursos.id + ";"
-                fila += str(recursos.lat_actual) + ";"
-                fila += str(recursos.lon_actual) + ";"
-                fila += str(recursos.total_horas_trabajadas) + ";"
-                fila += str(recursos.horas_trabajadas) + ";"
-                fila += str(recursos.estado) + ";"
-                fila += recursos.fecha_inicio + ";"
-                fila += recursos.fecha_llegada + ";"
-                fila += recursos.fecha_salida_incendio + ";"
-                fila += str(recursos.id_incendio_asignado) + ";"
-                fila += str(recursos.distancia_objetivo) + ";"
-                fila += str(recursos.distancia_recorrida) + ";"
-                fila += str(recursos.puntos_apagados) + ";"
-                fila += str(recursos.fecha_ultima_ejecucion) + ";"
-                fila += str(recursos.autonomia_restante) + "\n"
-                archivo.write(fila)
-        archivo.close()
-
-    def sobreescribir_usuarios(self, lista):
-        archivo = open("usuarios.csv", "w")
-        orden = self.primera_linea_usuarios.strip("\n").split(",")
-        texto = ""
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "id":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "nombre":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "contraseña":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "recurso_id":
-                texto += str(elemento) + "\n"
-        archivo.write(texto)
-        fila = ""
-        for elemento in lista:
-            fila += str(elemento.id) + ","
-            fila += str(elemento.nombre) + ","
-            fila += str(elemento.contrasena) + ","
-            fila += str(elemento.recurso_id) + "\n"
-            archivo.write(fila)
-            fila = ""
-        archivo.close()
-
-    def sobreescribir_incendios(self, lista):
-        archivo = open("incendios.csv", "w")
-        orden = self.primera_linea_incendios.strip("\n").split(",")
-        texto = ""
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "id":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lat":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lon":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "potencia":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "fecha_inicio":
-                texto += str(elemento) + "\n"
-        archivo.write(texto)
-        fila = ""
-        for elemento in lista:
-            fila += str(elemento.id) + ","
-            fila += str(elemento.lat) + ","
-            fila += str(elemento.lon) + ","
-            fila += str(elemento.potencia) + ","
-            fila += str(elemento.fecha_inicio) + "\n"
-            archivo.write(fila)
-            fila = ""
-        archivo.close()
-
-    def sobreescribir_recursos(self, lista):
-        archivo = open("recursos.csv", "w")
-        orden = self.primera_linea_recursos.strip("\n").split(",")
-        texto = ""
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "id":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "tipo":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "velocidad":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lat":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lon":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "autonomia":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "delay":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "tasa_extincion":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "costo":
-                texto += str(elemento) + "\n"
-        archivo.write(texto)
-        fila = ""
-        for elemento in lista:
-            fila += str(elemento.id) + ","
-            fila += str(elemento.tipo) + ","
-            fila += str(elemento.velocidad) + ","
-            fila += str(elemento.lat) + ","
-            fila += str(elemento.lon) + ","
-            fila += str(elemento.autonomia) + ","
-            fila += str(elemento.delay) + ","
-            fila += str(elemento.tasa_extincion) + ","
-            fila += str(elemento.costo) + "\n"
-            archivo.write(fila)
-            fila = ""
-        archivo.close()
-
-    def sobreescribir_meteorologia(self, lista):
-        archivo = open("meteorologia.csv", "w")
-        orden = self.primera_linea_metereologia.strip("\n").split(",")
-        texto = ""
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "id":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "fecha_inicio":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "fecha_termino":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "tipo":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "valor":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lat":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "lon":
-                texto += str(elemento) + ","
-        for elemento in orden:
-            if (elemento.split(":")[0]) == "radio":
-                texto += str(elemento) + "\n"
-        archivo.write(texto)
-        fila = ""
-        for elemento in lista:
-            fila += str(elemento.id) + ","
-            fila += str(elemento.fecha_inicio) + ","
-            fila += str(elemento.fecha_termino) + ","
-            fila += str(elemento.tipo) + ","
-            fila += str(elemento.valor) + ","
-            fila += str(elemento.lat) + ","
-            fila += str(elemento.lon) + ","
-            fila += str(elemento.radio) + "\n"
-            archivo.write(fila)
-            fila = ""
-        archivo.close()
-
+from objetos_personas import Usuario
+from objetos_personas import Incendio
+from objetos_personas import Recurso
+from objetos_personas import Meteorologia
+from funciones_archivos import Archivos
+import os
 
 class SuperLuchin:
     def __init__(self):
@@ -481,6 +24,11 @@ class SuperLuchin:
         self.anio = 0
         self.mes = 0
         self.dia = 0
+        lis = os.listdir(os.getcwdb())
+        try:
+            os.mkdir("Reportes Estrategias de Extincion")
+        except:
+            FileExistsError
         self.fecha_y_hora_actual = ""
         print("---- Bienvenido al Software SuperLuchin -----")
         self.iniciar_sesion()
@@ -533,7 +81,7 @@ class SuperLuchin:
             while contador:
                 print("Opciones:\n0 : Cerrar sesion\n1 : Ver datos incendios\n2 : Ver datos recursos\n"
                       "3 : Ver datos usuarios\n4 : Agregar usuario\n"
-                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas\n8 :Cambiar Fecha y Hora\n9 :Asignar recuros\n10: Salir ")
+                      "5 : Agregar pronostico meteorologico\n6 : Agregar nuevo incendio\n7 : Consultas avanzadas\n8 :Cambiar Fecha y Hora\n9 :Asignar recuros\n10: Estrategias extincion\n11: Salir ")
                 opcion = input("Ingrese alguna opcion: ")
                 try:
                     val = int(opcion)
@@ -563,8 +111,10 @@ class SuperLuchin:
                         elif opcion == 9:
                             self.asignar_recurso()
                         elif opcion == 10:
+                            self.estrategia_extincion()
+                        elif opcion == 11:
                             self.sobreescribir_archivos()
-                            print("Programa cerrado correctament")
+                            print("Programa cerrado correctamente")
                             contador = False
                     else:
                         print("Opcion no valida")
@@ -596,7 +146,7 @@ class SuperLuchin:
                             self.cerrar_sesion()
                             contador = False
                         elif opcion == 1:
-                            self.ver_incendio()
+                            self.ver_incendio(recurso)
                         elif opcion == 2:
                             self.sobreescribir_archivos()
                             self.cambiar_fecha_hora()
@@ -787,7 +337,7 @@ class SuperLuchin:
                 recurso.lon_actual = ((recurso.distancia_recorrida * cos_o) / 110) + int(recurso.lon_actual)
                 recurso.lat_actual = ((recurso.distancia_recorrida * sen_o) / 110) + int(recurso.lat_actual)
 
-    def ver_incendio(self, recurso):
+    def ver_incendio(self,recurso):
         if recurso.estado == "en ruta a incendio" or recurso.estado == "trabajando en incendio":
             for incendio in self.lista_incendios_ocurridos:
                 if str(recurso.id_incendio_asignado) == str(incendio.id):
@@ -1143,6 +693,122 @@ class SuperLuchin:
             if validador:
                 print("id erroneo o incendio posterior a fecha actual")
         print("\nRecurso asignado correctamente\n")
+
+    def estrategia_extincion(self):
+        contador = True
+        while contador:
+            print("Opciones:\n0 : volver \n1 : Cantidad de recursos\n2 : Tiempo de extincion\n"
+                  "3 : Costo economico")
+            opcion = input("Ingrese alguna opcion: ")
+            try:
+                val = int(opcion)
+                opcion = int(opcion)
+                if int(opcion) in [0, 1, 2, 3]:
+                    if opcion == 0:
+                        contador = False
+                    elif opcion == 1:
+                        self.est_cantidad_recursos()
+                    elif opcion == 2:
+                        self.est_tiempo()
+                    elif opcion == 3:
+                        self.est_costo()
+                else:
+                    print("Opcion no valida")
+            except ValueError:
+                print("Opcion no valida")
+
+    def est_cantidad_recursos(self):
+        pass
+    def est_tiempo(self):
+        pass
+    def est_costo(self):
+        lista1 = []
+        lista_para_imprimir = []
+        validador = True
+        while validador:
+            id_incendio = input("Ingrese id del incendio: ")
+            for incendio in self.lista_incendios_ocurridos:
+                if id_incendio == incendio.id:
+                    validador = False
+                    break
+        for recurso in self.lista_recursos:
+            x = (float(recurso.lat) - float(incendio.lat)) ** 2
+            y = (float(recurso.lon) - float(incendio.lon)) ** 2
+            distancia_grado = math.sqrt(x + y)
+            distancia_km = distancia_grado * 110
+            tiempo_trabajo = float(recurso.autonomia)*60 - ((distancia_km*2)*(((float(recurso.velocidad))*60)/1000))
+            real_extincion = float(recurso.tasa_extincion)*(tiempo_trabajo/60)
+            costo_segun_extincion = real_extincion/(float(recurso.costo))
+            tiempo_ciclo = (float(recurso.autonomia) + float(recurso.delay))*60
+            print(tiempo_ciclo)
+            txt = ""
+            txt += str(costo_segun_extincion)+":"
+            txt += str(recurso.id)+":"
+            txt += str(tiempo_ciclo)+":"
+            txt += str(real_extincion)
+            lista1.append(txt)
+            print(lista1)
+        puntos_poder = incendio.puntos_poder
+        minutos_disponibles = FechaYHora.contar_minutos(incendio.fecha_inicio,self.fecha_y_hora_actual)
+        lista1.sort(reverse=True)
+        print(lista1)
+        for elemento in lista1:
+            print("2")
+            if puntos_poder <= 0:
+                break
+            contador = minutos_disponibles
+            elemento = elemento.split(":")
+            while contador >0:
+                puntos_poder -= elemento[3]
+                contador -= elemento[2]
+                texto = str(elemento[1])+":"+str(elemento[3])
+                lista_para_imprimir.append(texto)
+        nombre ="{}_costo_economico.txt".format(incendio.id)
+        archivo = open(nombre,"w")
+        lista_ya_guardado = []
+        for i in lista_para_imprimir:
+            if not i in lista_ya_guardado:
+                veces = 0
+                fecha = incendio.fecha_inicio
+                for j in lista_para_imprimir:
+                    if i.strip[":"][0] == j.strip[":"][0]:
+                        veces +=1
+                lista_ya_guardado.append(i)
+                for recurso in self.lista_recursos:
+                    if str(recurso.id) == i.strip[":"][0]:
+                        while veces >= 0:
+                            txt = ""
+                            veces -=1
+                            x = (float(recurso.lat) - float(incendio.lat)) ** 2
+                            y = (float(recurso.lon) - float(incendio.lon)) ** 2
+                            distancia_grado = math.sqrt(x + y)
+                            distancia_km = distancia_grado * 110
+                            minutos_para_i = ((distancia_km ) * (((float(recurso.velocidad)) * 60) / 1000))
+                            txt += "hora salida base: {}".format(fecha)
+                            while minutos_para_i>=0:
+                                fecha = FechaYHora.siguiente_minuto(fecha)
+                                minutos_para_i -=1
+                            tiempo_trabajo = float(recurso.autonomia) - (
+                            (distancia_km * 2) * (((float(recurso.velocidad)) * 60) / 1000))
+                            txt += "hora llegada incendio: {}".format(fecha)
+                            while tiempo_trabajo>=0:
+                                fecha = FechaYHora.siguiente_minuto(fecha)
+                                tiempo_trabajo -= 1
+                            minutos_para_b = ((distancia_km) * (((float(recurso.velocidad)) * 60) / 1000))
+                            txt += "hora salida incendio: {}".format(fecha)
+                            while minutos_para_b>=0:
+                                fecha = FechaYHora.siguiente_minuto(fecha)
+                                minutos_para_b -=1
+                            txt += "hora llegada a base {}".format(fecha)
+                            minutos_delay = float(recurso.delay)*60
+                            while minutos_delay >= 0:
+                                fecha = FechaYHora.siguiente_minuto(fecha)
+                                minutos_delay -= 1
+                            txt += "puntos apagados {}".format(i[1])
+                            archivo.write(txt)
+        archivo.close()
+        #shutil.move(nombre,os.getcwdb()+os.fsdecode("/Reportes Estrategias de Extincion"))
+
 
 
 ejecutar = SuperLuchin()
